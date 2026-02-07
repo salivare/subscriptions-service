@@ -14,6 +14,7 @@ import (
 	"github.com/salivare/subscriptions-service/internal/config"
 )
 
+// App represents the HTTP application server and its dependencies.
 type App struct {
 	log             *slogx.Logger
 	server          *http.Server
@@ -22,6 +23,8 @@ type App struct {
 	shutdownTimeout time.Duration
 }
 
+// New creates a new instance of the HTTP application.
+// It initializes the http.Server with provided configuration and routing.
 func New(
 	log *slogx.Logger,
 	cfg config.HTTPConfig,
@@ -46,12 +49,16 @@ func New(
 	}
 }
 
+// MustRun starts the HTTP server and panics if an error occurs during startup.
+// Use this only in the main entry point of the application.
 func (a *App) MustRun() {
 	if err := a.Run(); err != nil {
 		panic(err)
 	}
 }
 
+// Run initializes the network listener and starts serving HTTP requests.
+// It returns an error if the listener fails to start or the server encounters a fatal error.
 func (a *App) Run() error {
 	const op = "httpapp.Run"
 
@@ -76,6 +83,9 @@ func (a *App) Run() error {
 	return nil
 }
 
+// Stop gracefully shuts down the HTTP server.
+// It waits for active connections to finish within the configured shutdown timeout.
+// If the timeout is exceeded, it forcefully closes all remaining connections.
 func (a *App) Stop() {
 	const op = "httpapp.Stop"
 

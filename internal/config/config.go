@@ -8,11 +8,13 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
+// Config is the main application configuration structure.
 type Config struct {
 	Env        string     `yaml:"env" env-default:"local"`
 	HTTPServer HTTPConfig `yaml:"http_server"`
 }
 
+// HTTPConfig defines the parameters for the underlying http.Server.
 type HTTPConfig struct {
 	Host              string        `yaml:"host" env-default:"localhost"`
 	Port              int           `yaml:"port" env-default:"8080"`
@@ -25,6 +27,8 @@ type HTTPConfig struct {
 	MaxHeaderBytes    int           `yaml:"max_header_bytes" env-default:"1048576"`
 }
 
+// MustLoad reads the configuration from the path provided via flags or environment variables.
+// It panics if the configuration cannot be loaded.
 func MustLoad() *Config {
 	path := fetchConfigPath()
 
@@ -35,6 +39,8 @@ func MustLoad() *Config {
 	return MustLoadByPath(path)
 }
 
+// MustLoadByPath reads the configuration from a specific file path.
+// It panics if the file is missing or invalid.
 func MustLoadByPath(configPath string) *Config {
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		panic("config file does not exist: " + configPath)
