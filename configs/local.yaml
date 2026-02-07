@@ -1,0 +1,11 @@
+env: "local" # dev, prod
+http_server:
+  host: "0.0.0.0"
+  port: 8082
+  timeout: 4s
+  idle_timeout: 30s
+  shutdown_timeout: 5s
+  read_timeout: 5s
+  write_timeout: 10s
+  read_header_timeout: 2s
+  max_header_bytes: 1048576
