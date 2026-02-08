@@ -5,25 +5,23 @@ import (
 	"net/http"
 
 	"github.com/salivare/subscriptions-service/internal/httpserver/middleware"
-	"github.com/salivare/subscriptions-service/internal/lib/api/response"
 )
+
+type StatusCoder interface {
+	StatusCode() int
+}
 
 func JSON(w http.ResponseWriter, r *http.Request, v any) {
 	w.Header().Set("Content-Type", "application/json")
 
-	switch resp := v.(type) {
-	case response.Response:
-		if resp.Status == response.StatusError {
-			w.WriteHeader(http.StatusBadRequest)
-		} else {
-			w.WriteHeader(http.StatusOK)
-		}
-	default:
-		w.WriteHeader(http.StatusOK)
-	}
-
 	if reqID := middleware.GetRequestID(r.Context()); reqID != "" {
 		w.Header().Set("X-Request-ID", reqID)
+	}
+
+	if sc, ok := v.(StatusCoder); ok {
+		w.WriteHeader(sc.StatusCode())
+	} else {
+		w.WriteHeader(http.StatusOK)
 	}
 
 	_ = json.NewEncoder(w).Encode(v)

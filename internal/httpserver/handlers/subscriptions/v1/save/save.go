@@ -1,37 +1,32 @@
 package savev1
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	"github.com/salivare-io/slogx"
+	"github.com/salivare/subscriptions-service/internal/domain/models"
 	"github.com/salivare/subscriptions-service/internal/httpserver/render"
-	"github.com/salivare/subscriptions-service/internal/lib/api/response"
+	"github.com/salivare/subscriptions-service/internal/httpserver/request"
+	"github.com/salivare/subscriptions-service/internal/httpserver/response"
+	"github.com/salivare/subscriptions-service/internal/storage"
 )
-
-type Request struct {
-	ServiceName string `json:"service_name" validate:"required"`
-	Price       int64  `json:"price" validate:"required"`
-	UserID      string `json:"user_id" validate:"required"`
-	StartDate   string `json:"start_date" validate:"required"`
-}
 
 type Response struct {
 	response.Response
-	Error string `json:"error,omitempty"`
+	ID *uuid.UUID `json:"id,omitempty"`
 }
 
-type Subscription struct {
-	ServiceName string
-	Price       int64
-	UserID      string
-	StartDate   string
+func (r Response) StatusCode() int {
+	return r.Response.StatusCode()
 }
 
 type SubscriptionSaver interface {
-	SaveSubscription(subscription Subscription) (int64, error)
+	SaveSubscription(ctx context.Context, subscription models.Subscription) (uuid.UUID, error)
 }
 
 // New creates a handler for creating a subscription.
@@ -41,19 +36,24 @@ type SubscriptionSaver interface {
 // @Tags subscriptions
 // @Accept json
 // @Produce json
-// @Param request body Request true "Subscription data"
+// @Param request body request.Request true "Subscription data"
 // @Success 200 {object} Response
 // @Failure 400 {object} Response
 // @Router /api/v1/subscription [post]
 func New(subscriptionSaver SubscriptionSaver) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.subscriptions.save.New"
-		log := slogx.FromContext(r.Context()).With(slog.String("op", op))
+		ctx := r.Context()
+		log := slogx.FromContext(ctx).With(slog.String("op", op))
 
-		var req Request
+		var req request.Request
 		if err := render.Bind(r, &req); err != nil {
-			log.Error("invalid json", slogx.Err(err))
-			render.JSON(w, r, response.Error("invalid json"))
+			log.ErrorContext(ctx, "invalid json", slogx.Err(err))
+			render.JSON(
+				w, r, Response{
+					Response: response.Error("invalid json"),
+				},
+			)
 			return
 		}
 
@@ -61,23 +61,47 @@ func New(subscriptionSaver SubscriptionSaver) http.HandlerFunc {
 			var validateError validator.ValidationErrors
 			errors.As(err, &validateError)
 
-			log.Error("invalid request", slogx.Err(err))
-
+			log.ErrorContext(ctx, "invalid request", slogx.Err(err))
 			render.JSON(w, r, response.ValidationError(validateError))
 			return
 		}
 
-		// TODO: Добавить реализацию сохранения
-		//_, err := subscriptionSaver.SaveSubscription(...)
-		//if err != nil {
-		//	log.Error("failed to save", slogx.Err(err))
-		//	render.JSON(w, r, response.Error("failed to add subscription"))
-		//	return
-		//}
+		sub, err := req.ToModel()
+		if err != nil {
+			log.ErrorContext(ctx, "failed to convert request to model", slogx.Err(err))
+			render.JSON(
+				w, r, Response{
+					Response: response.Error("invalid subscription data"),
+				},
+			)
+			return
+		}
+
+		id, err := subscriptionSaver.SaveSubscription(ctx, sub)
+		if err != nil {
+			if errors.Is(err, storage.ErrSubscriptionExists) {
+				log.WarnContext(ctx, "subscription already exists", slogx.Err(err))
+				render.JSON(
+					w, r, Response{
+						Response: response.Conflict("subscription already exists"),
+					},
+				)
+				return
+			}
+
+			log.ErrorContext(ctx, "failed to save subscription", slogx.Err(err))
+			render.JSON(
+				w, r, Response{
+					Response: response.Internal("internal error"),
+				},
+			)
+			return
+		}
 
 		render.JSON(
 			w, r, Response{
 				Response: response.OK(),
+				ID:       &id,
 			},
 		)
 	}

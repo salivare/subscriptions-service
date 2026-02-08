@@ -10,9 +10,10 @@ import (
 
 // Config is the main application configuration structure.
 type Config struct {
-	Env           string        `yaml:"env" env-default:"local"`
-	HTTPServer    HTTPConfig    `yaml:"http_server"`
-	SwaggerServer SwaggerConfig `yaml:"swagger_server"`
+	Env           string         `yaml:"env" env-default:"local"`
+	HTTPServer    HTTPConfig     `yaml:"http_server"`
+	Postgres      PostgresConfig `yaml:"postgres"`
+	SwaggerServer SwaggerConfig  `yaml:"swagger_server"`
 }
 
 // HTTPConfig defines the parameters for the underlying http.Server.
@@ -26,6 +27,25 @@ type HTTPConfig struct {
 	WriteTimeout      time.Duration `yaml:"write_timeout" env-default:"10s"`
 	ReadHeaderTimeout time.Duration `yaml:"read_header_timeout" env-default:"2s"`
 	MaxHeaderBytes    int           `yaml:"max_header_bytes" env-default:"1048576"`
+}
+
+type PostgresConfig struct {
+	Host            string      `yaml:"host" env-default:"localhost"`
+	Port            int         `yaml:"port" env-default:"5432"`
+	User            string      `yaml:"user" env-default:"postgres"`
+	Password        string      `yaml:"password" env-default:""`
+	DBName          string      `yaml:"dbname" env-default:"postgres"`
+	SSLMode         string      `yaml:"sslmode" env-default:"disable"`
+	MigrationsPath  string      `yaml:"migrations_path" env-default:"./migrations"`
+	MigrationsTable string      `yaml:"migrations_table" env-default:"schema_migrations"`
+	Retry           RetryConfig `yaml:"retry"`
+}
+
+type RetryConfig struct {
+	Attempts     int           `yaml:"attempts" env-default:"10"`
+	InitialDelay time.Duration `yaml:"initial_delay" env-default:"1s"`
+	MaxDelay     time.Duration `yaml:"max_delay" env-default:"10s"`
+	Step         time.Duration `yaml:"step" env-default:"2s"`
 }
 
 type SwaggerConfig struct {

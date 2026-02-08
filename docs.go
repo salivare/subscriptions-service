@@ -35,7 +35,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/savev1.Request"
+                            "$ref": "#/definitions/request.Request"
                         }
                     }
                 ],
@@ -57,7 +57,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "savev1.Request": {
+        "request.Request": {
             "type": "object",
             "required": [
                 "price",
@@ -66,8 +66,12 @@ const docTemplate = `{
                 "user_id"
             ],
             "properties": {
+                "end_date": {
+                    "type": "string"
+                },
                 "price": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "service_name": {
                     "type": "string"
@@ -83,7 +87,8 @@ const docTemplate = `{
         "savev1.Response": {
             "type": "object",
             "properties": {
-                "error": {
+                "error": {},
+                "id": {
                     "type": "string"
                 },
                 "status": {

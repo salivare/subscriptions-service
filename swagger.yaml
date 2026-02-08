@@ -1,7 +1,10 @@
 definitions:
-  savev1.Request:
+  request.Request:
     properties:
+      end_date:
+        type: string
       price:
+        minimum: 0
         type: integer
       service_name:
         type: string
@@ -17,7 +20,8 @@ definitions:
     type: object
   savev1.Response:
     properties:
-      error:
+      error: {}
+      id:
         type: string
       status:
         type: string
@@ -36,7 +40,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/savev1.Request'
+          $ref: '#/definitions/request.Request'
       produces:
       - application/json
       responses:

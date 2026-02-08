@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS subscriptions_unique_user_service_start;

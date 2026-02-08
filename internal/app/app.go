@@ -8,6 +8,7 @@ import (
 	"github.com/salivare/subscriptions-service/internal/httpserver/handlers/subscriptions/v1/save"
 	"github.com/salivare/subscriptions-service/internal/httpserver/middleware"
 	"github.com/salivare/subscriptions-service/internal/httpserver/router"
+	"github.com/salivare/subscriptions-service/internal/storage/postgres"
 )
 
 // App is a root structure that aggregates all application modules
@@ -22,8 +23,11 @@ func New(log *slogx.Logger, cfg *config.Config) (*App, error) {
 	r.Use(middleware.Logger(log))
 	r.Use(middleware.LoggerContext(log))
 
-	// заглушка
-	storage := &stubSubscriptionSaver{}
+	storage, err := postgres.New(cfg.Postgres)
+	if err != nil {
+		log.Error("could not connect to postgres", slogx.Err(err))
+		return nil, err
+	}
 
 	r.POST("/api/v1/subscription", savev1.New(storage))
 
@@ -38,10 +42,4 @@ func New(log *slogx.Logger, cfg *config.Config) (*App, error) {
 	return &App{
 		HTTPSrv: httpApp,
 	}, nil
-}
-
-type stubSubscriptionSaver struct{}
-
-func (s *stubSubscriptionSaver) SaveSubscription(subscription savev1.Subscription) (int64, error) {
-	return 1, nil
 }

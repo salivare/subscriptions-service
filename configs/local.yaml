@@ -9,6 +9,22 @@ http_server:
   write_timeout: 10s
   read_header_timeout: 2s
   max_header_bytes: 1048576
-  swagger_server:
+swagger_server:
     json_path: "./swagger.json"
     ui_path: "./swaggerui"
+postgres:
+  host: "localhost"
+  port: 5432
+  user: "postgres"
+  password: "secret"
+  dbname: "subscriptions"
+  sslmode: "disable"
+
+  migrations_path: "./migrations"
+  migrations_table: "schema_migrations"
+
+  retry:
+    attempts: 10
+    initial_delay: 1s
+    max_delay: 10s
+    step: 2s
