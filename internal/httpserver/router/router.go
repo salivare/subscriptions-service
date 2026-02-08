@@ -66,3 +66,7 @@ func (r *Router) applyMiddleware(h http.Handler) http.Handler {
 	}
 	return h
 }
+
+func (r *Router) Mux() *http.ServeMux {
+	return r.mux
+}

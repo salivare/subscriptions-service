@@ -1,4 +1,4 @@
-package save
+package savev1
 
 import (
 	"errors"
@@ -34,6 +34,17 @@ type SubscriptionSaver interface {
 	SaveSubscription(subscription Subscription) (int64, error)
 }
 
+// New creates a handler for creating a subscription.
+//
+// @Summary Create subscription
+// @Description Creates a new subscription for a user
+// @Tags subscriptions
+// @Accept json
+// @Produce json
+// @Param request body Request true "Subscription data"
+// @Success 200 {object} Response
+// @Failure 400 {object} Response
+// @Router /api/v1/subscription [post]
 func New(subscriptionSaver SubscriptionSaver) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.subscriptions.save.New"

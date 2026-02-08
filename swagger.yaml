@@ -1,0 +1,54 @@
+definitions:
+  savev1.Request:
+    properties:
+      price:
+        type: integer
+      service_name:
+        type: string
+      start_date:
+        type: string
+      user_id:
+        type: string
+    required:
+    - price
+    - service_name
+    - start_date
+    - user_id
+    type: object
+  savev1.Response:
+    properties:
+      error:
+        type: string
+      status:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /api/v1/subscription:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new subscription for a user
+      parameters:
+      - description: Subscription data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/savev1.Request'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/savev1.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/savev1.Response'
+      summary: Create subscription
+      tags:
+      - subscriptions
+swagger: "2.0"

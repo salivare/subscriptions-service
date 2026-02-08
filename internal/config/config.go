@@ -10,8 +10,9 @@ import (
 
 // Config is the main application configuration structure.
 type Config struct {
-	Env        string     `yaml:"env" env-default:"local"`
-	HTTPServer HTTPConfig `yaml:"http_server"`
+	Env           string        `yaml:"env" env-default:"local"`
+	HTTPServer    HTTPConfig    `yaml:"http_server"`
+	SwaggerServer SwaggerConfig `yaml:"swagger_server"`
 }
 
 // HTTPConfig defines the parameters for the underlying http.Server.
@@ -25,6 +26,11 @@ type HTTPConfig struct {
 	WriteTimeout      time.Duration `yaml:"write_timeout" env-default:"10s"`
 	ReadHeaderTimeout time.Duration `yaml:"read_header_timeout" env-default:"2s"`
 	MaxHeaderBytes    int           `yaml:"max_header_bytes" env-default:"1048576"`
+}
+
+type SwaggerConfig struct {
+	JSONPath string `yaml:"json_path" env-default:"./swagger.json"`
+	UIPath   string `yaml:"ui_path" env-default:"./swaggerui"`
 }
 
 // MustLoad reads the configuration from the path provided via flags or environment variables.
