@@ -33,11 +33,16 @@ type Getter interface {
 	SubscriptionByID(ctx context.Context, id uuid.UUID) (models.Subscription, error)
 }
 
+type Summer interface {
+	SumSubscriptions(ctx context.Context, filter models.SumFilter) (int64, error)
+}
+
 type Service struct {
 	subSaver   Saver
 	subUpdater Updater
 	subDeleter Deleter
 	subGetter  Getter
+	subSummer  Summer
 }
 
 func New(
@@ -45,12 +50,14 @@ func New(
 	subUpdater Updater,
 	subDeleter Deleter,
 	subGetter Getter,
+	subSummer Summer,
 ) *Service {
 	return &Service{
 		subSaver:   subSaver,
 		subUpdater: subUpdater,
 		subDeleter: subDeleter,
 		subGetter:  subGetter,
+		subSummer:  subSummer,
 	}
 }
 
@@ -142,4 +149,41 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (models.Subscription, e
 	}
 
 	return sub, nil
+}
+
+func (s *Service) Sum(ctx context.Context, f models.SumFilter) (int64, error) {
+	const op = "services.subscriptions.Get"
+	log := slogx.FromContext(ctx).With(
+		slog.String("op", op),
+	)
+
+	if f.StartDateFrom == nil && f.EndDateFrom == nil {
+		log.ErrorContext(ctx, "must specify either StartDateFrom or EndDateFrom")
+		return 0, fmt.Errorf("at least one period must be provided: start_date_from or end_date_from")
+	}
+
+	now := time.Now().UTC()
+	currentMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+
+	if f.StartDateFrom != nil && f.StartDateTo == nil {
+		f.StartDateTo = &currentMonth
+	}
+
+	if f.EndDateFrom != nil && f.EndDateTo == nil {
+		f.EndDateTo = &currentMonth
+	}
+
+	if f.StartDateFrom != nil && f.StartDateTo != nil {
+		if f.StartDateTo.Before(*f.StartDateFrom) {
+			return 0, fmt.Errorf("start_date_to must be >= start_date_from")
+		}
+	}
+
+	if f.EndDateFrom != nil && f.EndDateTo != nil {
+		if f.EndDateTo.Before(*f.EndDateFrom) {
+			return 0, fmt.Errorf("end_date_to must be >= end_date_from")
+		}
+	}
+
+	return s.subSummer.SumSubscriptions(ctx, f)
 }

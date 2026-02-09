@@ -67,6 +67,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/subscription/sum": {
+            "post": {
+                "description": "Sum of subscriptions for selected periods with optional filters",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subscriptions"
+                ],
+                "summary": "Calculate total subscription cost",
+                "parameters": [
+                    {
+                        "description": "Filters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.SumRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.SumResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/subscription/{id}": {
             "get": {
                 "description": "Get subscription by ID",
@@ -198,19 +244,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Updated subscription",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Subscription"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/response.SubscriptionResponse"
                         }
                     },
                     "400": {
@@ -236,35 +270,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "models.Subscription": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "end_date": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "price": {
-                    "type": "integer"
-                },
-                "service_name": {
-                    "type": "string"
-                },
-                "start_date": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "string"
-                }
-            }
-        },
         "request.CreateRequest": {
             "type": "object",
             "required": [
@@ -285,6 +290,29 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "start_date": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "request.SumRequest": {
+            "type": "object",
+            "properties": {
+                "end_date_from": {
+                    "type": "string"
+                },
+                "end_date_to": {
+                    "type": "string"
+                },
+                "service_name": {
+                    "type": "string"
+                },
+                "start_date_from": {
+                    "type": "string"
+                },
+                "start_date_to": {
                     "type": "string"
                 },
                 "user_id": {
@@ -317,6 +345,43 @@ const docTemplate = `{
                 "error": {},
                 "status": {
                     "type": "string"
+                }
+            }
+        },
+        "response.SubscriptionResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "integer"
+                },
+                "service_name": {
+                    "type": "string"
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.SumResponse": {
+            "type": "object",
+            "properties": {
+                "total": {
+                    "type": "integer"
                 }
             }
         },

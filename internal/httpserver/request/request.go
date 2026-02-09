@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/salivare/subscriptions-service/internal/domain/models"
+	"github.com/salivare/subscriptions-service/internal/format"
 )
 
 type CreateRequest struct {
@@ -16,15 +17,67 @@ type CreateRequest struct {
 	EndDate     string `json:"end_date"`
 }
 
-func (r CreateRequest) ToModel() (models.Subscription, error) {
-	return convert(r.ServiceName, r.Price, r.UserID, r.StartDate, r.EndDate)
-}
-
 type UpdateRequest struct {
 	ServiceName *string `json:"service_name"`
 	Price       *int64  `json:"price" validate:"min=0"`
 	StartDate   *string `json:"start_date"`
 	EndDate     *string `json:"end_date"`
+}
+
+type SumRequest struct {
+	UserID      *string `json:"user_id"`
+	ServiceName *string `json:"service_name"`
+
+	StartDateFrom *string `json:"start_date_from"`
+	StartDateTo   *string `json:"start_date_to"`
+
+	EndDateFrom *string `json:"end_date_from"`
+	EndDateTo   *string `json:"end_date_to"`
+}
+
+func (r CreateRequest) ToModel() (models.Subscription, error) {
+	return convert(r.ServiceName, r.Price, r.UserID, r.StartDate, r.EndDate)
+}
+
+func (r SumRequest) ToFilter() (models.SumFilter, error) {
+	parse := func(s *string) (*time.Time, error) {
+		if s == nil {
+			return nil, nil
+		}
+		t, err := time.Parse(format.MonthYear, *s)
+		if err != nil {
+			return nil, err
+		}
+
+		tt := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
+		return &tt, nil
+	}
+
+	startFrom, err := parse(r.StartDateFrom)
+	if err != nil {
+		return models.SumFilter{}, fmt.Errorf("invalid start_date_from: %w", err)
+	}
+	startTo, err := parse(r.StartDateTo)
+	if err != nil {
+		return models.SumFilter{}, fmt.Errorf("invalid start_date_to: %w", err)
+	}
+	endFrom, err := parse(r.EndDateFrom)
+	if err != nil {
+		return models.SumFilter{}, fmt.Errorf("invalid end_date_from: %w", err)
+	}
+	endTo, err := parse(r.EndDateTo)
+	if err != nil {
+		return models.SumFilter{}, fmt.Errorf("invalid end_date_to: %w", err)
+	}
+
+	return models.SumFilter{
+		UserID:        r.UserID,
+		ServiceName:   r.ServiceName,
+		StartDateFrom: startFrom,
+		StartDateTo:   startTo,
+		EndDateFrom:   endFrom,
+		EndDateTo:     endTo,
+	}, nil
 }
 
 func (r UpdateRequest) ApplyTo(sub *models.Subscription) error {
@@ -89,7 +142,7 @@ func convert(service string, price *int64, userID string, start string, end stri
 }
 
 func parseMonthYear(s string) (time.Time, error) {
-	t, err := time.Parse("01-2006", s)
+	t, err := time.Parse(format.MonthYear, s)
 	if err != nil {
 		return time.Time{}, err
 	}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -151,6 +152,7 @@ func (s *Storage) DeleteSubscription(ctx context.Context, id uuid.UUID) error {
 
 	rows, _ := res.RowsAffected()
 	if rows == 0 {
+		log.ErrorContext(ctx, "subscription not found", slogx.Err(err))
 		return storage.ErrNotFound
 	}
 
@@ -198,10 +200,12 @@ func (s *Storage) UpdateSubscription(ctx context.Context, sub models.Subscriptio
 		var pgErr *pgconn.PgError
 
 		if errors.As(err, &pgErr) && pgErr.Code == PGErrUniqueViolation {
+			log.WarnContext(ctx, "subscription already exists", slogx.Err(err))
 			return models.Subscription{}, fmt.Errorf("%s: %w", op, storage.ErrSubscriptionExists)
 		}
 
 		if errors.Is(err, sql.ErrNoRows) {
+			log.WarnContext(ctx, "subscription does not exist", slogx.Err(err))
 			return models.Subscription{}, storage.ErrNotFound
 		}
 
@@ -210,4 +214,62 @@ func (s *Storage) UpdateSubscription(ctx context.Context, sub models.Subscriptio
 	}
 
 	return updated, nil
+}
+
+func (s *Storage) SumSubscriptions(ctx context.Context, f models.SumFilter) (int64, error) {
+	const op = "storage.postgres.SumSubscriptions"
+	log := slogx.FromContext(ctx).With(slog.String("op", op))
+
+	var (
+		conditions []string
+		args       []any
+		argIndex   = 1
+	)
+
+	add := func(cond string, val any) {
+		conditions = append(conditions, fmt.Sprintf(cond, argIndex))
+		args = append(args, val)
+		argIndex++
+	}
+
+	if f.UserID != nil {
+		add("user_id = $%d", *f.UserID)
+	}
+
+	if f.ServiceName != nil {
+		add("service_name = $%d", *f.ServiceName)
+	}
+
+	if f.StartDateFrom != nil {
+		add("start_date >= $%d", *f.StartDateFrom)
+	}
+
+	if f.StartDateTo != nil {
+		add("start_date <= $%d", *f.StartDateTo)
+	}
+
+	if f.EndDateFrom != nil {
+		add("end_date >= $%d", *f.EndDateFrom)
+	}
+
+	if f.EndDateTo != nil {
+		add("end_date <= $%d", *f.EndDateTo)
+	}
+
+	query := `
+        SELECT COALESCE(SUM(price), 0)
+        FROM subscriptions
+    `
+
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	var total int64
+	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&total); err != nil {
+		log.ErrorContext(ctx, "failed to sum subscriptions", slogx.Err(err))
+		return 0, fmt.Errorf("failed to execute sum query: %w", err)
+	}
+
+	return total, nil
 }

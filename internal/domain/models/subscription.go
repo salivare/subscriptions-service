@@ -16,3 +16,14 @@ type Subscription struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
+
+type SumFilter struct {
+	UserID      *string
+	ServiceName *string
+
+	StartDateFrom *time.Time
+	StartDateTo   *time.Time
+
+	EndDateFrom *time.Time
+	EndDateTo   *time.Time
+}

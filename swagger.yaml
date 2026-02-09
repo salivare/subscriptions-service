@@ -1,23 +1,4 @@
 definitions:
-  models.Subscription:
-    properties:
-      created_at:
-        type: string
-      end_date:
-        type: string
-      id:
-        type: string
-      price:
-        type: integer
-      service_name:
-        type: string
-      start_date:
-        type: string
-      updated_at:
-        type: string
-      user_id:
-        type: string
-    type: object
   request.CreateRequest:
     properties:
       end_date:
@@ -37,6 +18,21 @@ definitions:
     - start_date
     - user_id
     type: object
+  request.SumRequest:
+    properties:
+      end_date_from:
+        type: string
+      end_date_to:
+        type: string
+      service_name:
+        type: string
+      start_date_from:
+        type: string
+      start_date_to:
+        type: string
+      user_id:
+        type: string
+    type: object
   request.UpdateRequest:
     properties:
       end_date:
@@ -55,6 +51,30 @@ definitions:
       error: {}
       status:
         type: string
+    type: object
+  response.SubscriptionResponse:
+    properties:
+      created_at:
+        type: string
+      end_date:
+        type: string
+      id:
+        type: string
+      price:
+        type: integer
+      service_name:
+        type: string
+      start_date:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  response.SumResponse:
+    properties:
+      total:
+        type: integer
     type: object
   savev1.CreateResponse:
     properties:
@@ -197,12 +217,7 @@ paths:
         "200":
           description: Updated subscription
           schema:
-            allOf:
-            - $ref: '#/definitions/response.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.Subscription'
-              type: object
+            $ref: '#/definitions/response.SubscriptionResponse'
         "400":
           description: Invalid input
           schema:
@@ -216,6 +231,36 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
       summary: Update subscription
+      tags:
+      - subscriptions
+  /api/v1/subscription/sum:
+    post:
+      consumes:
+      - application/json
+      description: Sum of subscriptions for selected periods with optional filters
+      parameters:
+      - description: Filters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/request.SumRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.SumResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Calculate total subscription cost
       tags:
       - subscriptions
 swagger: "2.0"

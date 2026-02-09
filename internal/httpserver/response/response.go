@@ -34,6 +34,10 @@ type SubscriptionResponse struct {
 	UpdatedAt   string    `json:"updated_at"`
 }
 
+type SumResponse struct {
+	Total int64 `json:"total"`
+}
+
 func (r Response) StatusCode() int {
 	if r.Code == 0 {
 		return 200

@@ -8,6 +8,7 @@ import (
 	deletev1 "github.com/salivare/subscriptions-service/internal/httpserver/handlers/subscriptions/v1/delete"
 	getv1 "github.com/salivare/subscriptions-service/internal/httpserver/handlers/subscriptions/v1/get"
 	savev1 "github.com/salivare/subscriptions-service/internal/httpserver/handlers/subscriptions/v1/save"
+	sumv1 "github.com/salivare/subscriptions-service/internal/httpserver/handlers/subscriptions/v1/sum"
 	updatev1 "github.com/salivare/subscriptions-service/internal/httpserver/handlers/subscriptions/v1/update"
 	"github.com/salivare/subscriptions-service/internal/httpserver/middleware"
 	"github.com/salivare/subscriptions-service/internal/httpserver/router"
@@ -33,12 +34,13 @@ func New(log *slogx.Logger, cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	subSrv := subscription.New(storage, storage, storage, storage)
+	subSrv := subscription.New(storage, storage, storage, storage, storage)
 
 	r.POST("/api/v1/subscription", savev1.New(subSrv))
 	r.DELETE("/api/v1/subscription/{id}", deletev1.New(subSrv))
 	r.PATCH("/api/v1/subscription/{id}", updatev1.New(subSrv))
 	r.GET("/api/v1/subscription/{id}", getv1.New(subSrv))
+	r.POST("/api/v1/subscription/sum", sumv1.New(subSrv))
 
 	sw := swaggerapp.New(
 		cfg.SwaggerServer.JSONPath,
