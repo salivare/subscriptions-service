@@ -20,17 +20,17 @@ type Subscription interface {
 
 // New creates a handler for delete a subscription.
 //
-// @Summary      Delete subscription
-// @Description  Deletes a subscription by ID
-// @Tags         subscriptions
-// @Accept       json
-// @Produce      json
-// @Param        id   path      string  true  "Subscription ID (UUID)"
-// @Success      200  {object}  response.Response
-// @Failure      400  {object}  response.Response  "Invalid ID"
-// @Failure      404  {object}  response.Response  "Subscription not found"
-// @Failure      500  {object}  response.Response  "Internal server error"
-// @Router       /api/v1/subscription/{id} [delete]
+//	@Summary		Delete subscription
+//	@Description	Deletes a subscription by ID
+//	@Tags			subscriptions
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		string	true	"Subscription ID (UUID)"
+//	@Success		200	{object}	response.Response
+//	@Failure		400	{object}	response.Response	"Invalid ID"
+//	@Failure		404	{object}	response.Response	"Subscription not found"
+//	@Failure		500	{object}	response.Response	"Internal server error"
+//	@Router			/api/v1/subscription/{id} [delete]
 func New(subscription Subscription) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.subscriptions.delete.New"

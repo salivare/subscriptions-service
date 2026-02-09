@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -21,27 +22,32 @@ type Response struct {
 	ID *uuid.UUID `json:"id,omitempty"`
 }
 
+type CreateResponse struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt string    `json:"created_at"`
+}
+
 func (r Response) StatusCode() int {
 	return r.Response.StatusCode()
 }
 
 type Subscription interface {
-	Save(ctx context.Context, subscription models.Subscription) (uuid.UUID, error)
+	Save(ctx context.Context, subscription models.Subscription) (uuid.UUID, time.Time, error)
 }
 
 // New creates a handler for creating a subscription.
 //
-// @Summary      Create subscription
-// @Description  Creates a new subscription for a user
-// @Tags         subscriptions
-// @Accept       json
-// @Produce      json
-// @Param        request  body      request.CreateRequest  true  "Subscription data"
-// @Success      200      {object}  Response
-// @Failure      400      {object}  Response  "Invalid request"
-// @Failure      409      {object}  Response  "Subscription already exists"
-// @Failure      500      {object}  Response  "Internal server error"
-// @Router       /api/v1/subscription [post]
+//	@Summary		Create subscription
+//	@Description	Creates a new subscription for a user
+//	@Tags			subscriptions
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		request.CreateRequest	true	"Subscription data"
+//	@Success		200		{object}	CreateResponse
+//	@Failure		400		{object}	Response	"Invalid request"
+//	@Failure		409		{object}	Response	"Subscription already exists"
+//	@Failure		500		{object}	Response	"Internal server error"
+//	@Router			/api/v1/subscription [post]
 func New(subscription Subscription) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.subscriptions.save.New"
@@ -79,7 +85,7 @@ func New(subscription Subscription) http.HandlerFunc {
 			return
 		}
 
-		id, err := subscription.Save(ctx, sub)
+		id, createAt, err := subscription.Save(ctx, sub)
 		if err != nil {
 			if errors.Is(err, subSrv.ErrAlreadyExists) {
 				render.JSON(
@@ -100,9 +106,12 @@ func New(subscription Subscription) http.HandlerFunc {
 		}
 
 		render.JSON(
-			w, r, Response{
-				Response: response.OK(),
-				ID:       &id,
+			w, r, response.Response{
+				Status: response.StatusOK,
+				Data: CreateResponse{
+					ID:        id,
+					CreatedAt: createAt.Format(time.DateTime),
+				},
 			},
 		)
 	}

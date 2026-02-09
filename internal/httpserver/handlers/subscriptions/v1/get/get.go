@@ -21,17 +21,17 @@ type Subscription interface {
 
 // New creates a handler for get a subscription.
 //
-// @Summary      Get subscription
-// @Description  Get subscription by ID
-// @Tags         subscriptions
-// @Accept       json
-// @Produce      json
-// @Param        id   path      string              true  "Subscription ID (UUID)"
-// @Success      200  {object}  response.Response   "Subscription data"
-// @Failure      400  {object}  response.Response   "Invalid ID"
-// @Failure      404  {object}  response.Response   "Subscription not found"
-// @Failure      500  {object}  response.Response   "Internal error"
-// @Router       /api/v1/subscription/{id} [get]
+//	@Summary		Get subscription
+//	@Description	Get subscription by ID
+//	@Tags			subscriptions
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		string				true	"Subscription ID (UUID)"
+//	@Success		200	{object}	response.Response	"Subscription data"
+//	@Failure		400	{object}	response.Response	"Invalid ID"
+//	@Failure		404	{object}	response.Response	"Subscription not found"
+//	@Failure		500	{object}	response.Response	"Internal error"
+//	@Router			/api/v1/subscription/{id} [get]
 func New(subscription Subscription) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.subscriptions.get.New"
@@ -63,6 +63,11 @@ func New(subscription Subscription) http.HandlerFunc {
 			return
 		}
 
-		render.JSON(w, r, response.OKWithData(sub))
+		render.JSON(
+			w, r, response.Response{
+				Status: response.StatusOK,
+				Data:   response.ToSubscriptionResponse(sub),
+			},
+		)
 	}
 }

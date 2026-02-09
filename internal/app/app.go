@@ -7,7 +7,7 @@ import (
 	"github.com/salivare/subscriptions-service/internal/config"
 	deletev1 "github.com/salivare/subscriptions-service/internal/httpserver/handlers/subscriptions/v1/delete"
 	getv1 "github.com/salivare/subscriptions-service/internal/httpserver/handlers/subscriptions/v1/get"
-	"github.com/salivare/subscriptions-service/internal/httpserver/handlers/subscriptions/v1/save"
+	savev1 "github.com/salivare/subscriptions-service/internal/httpserver/handlers/subscriptions/v1/save"
 	updatev1 "github.com/salivare/subscriptions-service/internal/httpserver/handlers/subscriptions/v1/update"
 	"github.com/salivare/subscriptions-service/internal/httpserver/middleware"
 	"github.com/salivare/subscriptions-service/internal/httpserver/router"

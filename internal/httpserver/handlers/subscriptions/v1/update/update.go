@@ -9,6 +9,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/salivare-io/slogx"
+	"github.com/salivare/subscriptions-service/internal/domain/models"
 	v1 "github.com/salivare/subscriptions-service/internal/httpserver/handlers/subscriptions/v1"
 	"github.com/salivare/subscriptions-service/internal/httpserver/render"
 	"github.com/salivare/subscriptions-service/internal/httpserver/request"
@@ -17,23 +18,23 @@ import (
 )
 
 type Subscription interface {
-	Update(ctx context.Context, id uuid.UUID, updateReq request.UpdateRequest) error
+	Update(ctx context.Context, id uuid.UUID, updateReq request.UpdateRequest) (models.Subscription, error)
 }
 
 // New creates a handler for update a subscription.
 //
-// @Summary      Update subscription
-// @Description  Partially update subscription fields (PATCH). Any field may be omitted.
-// @Tags         subscriptions
-// @Accept       json
-// @Produce      json
-// @Param        id   path      string                   true  "Subscription ID (UUID)"
-// @Param        body body      request.UpdateRequest    true  "Fields to update"
-// @Success      200  {object}  response.Response        "OK"
-// @Failure      400  {object}  response.Response        "Invalid input"
-// @Failure      404  {object}  response.Response        "Subscription not found"
-// @Failure      500  {object}  response.Response        "Internal error"
-// @Router       /api/v1/subscription/{id} [patch]
+//	@Summary		Update subscription
+//	@Description	Partially update subscription fields (PATCH). Any field may be omitted.
+//	@Tags			subscriptions
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string							true	"Subscription ID (UUID)"
+//	@Param			body	body		request.UpdateRequest			true	"Fields to update"
+//	@Success		200		{object}	response.SubscriptionResponse	"Updated subscription"
+//	@Failure		400		{object}	response.Response				"Invalid input"
+//	@Failure		404		{object}	response.Response				"Subscription not found"
+//	@Failure		500		{object}	response.Response				"Internal error"
+//	@Router			/api/v1/subscription/{id} [patch]
 func New(subscription Subscription) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.subscriptions.update.New"
@@ -61,7 +62,7 @@ func New(subscription Subscription) http.HandlerFunc {
 			return
 		}
 
-		err := subscription.Update(ctx, id, reqBody)
+		updated, err := subscription.Update(ctx, id, reqBody)
 		if err != nil {
 			if errors.Is(err, subSrv.ErrNotFound) {
 				log.ErrorContext(ctx, "subscription not found", slogx.Err(err))
@@ -80,6 +81,11 @@ func New(subscription Subscription) http.HandlerFunc {
 			return
 		}
 
-		render.JSON(w, r, response.OK())
+		render.JSON(
+			w, r, response.Response{
+				Status: response.StatusOK,
+				Data:   response.ToSubscriptionResponse(updated),
+			},
+		)
 	}
 }

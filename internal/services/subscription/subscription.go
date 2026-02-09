@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/salivare-io/slogx"
@@ -17,11 +18,11 @@ var ErrAlreadyExists = errors.New("subscription already exists")
 var ErrNotFound = errors.New("subscription not found")
 
 type Saver interface {
-	SaveSubscription(ctx context.Context, subscription models.Subscription) (uuid.UUID, error)
+	SaveSubscription(ctx context.Context, subscription models.Subscription) (uuid.UUID, time.Time, error)
 }
 
 type Updater interface {
-	UpdateSubscription(ctx context.Context, subscription models.Subscription) error
+	UpdateSubscription(ctx context.Context, subscription models.Subscription) (models.Subscription, error)
 }
 
 type Deleter interface {
@@ -53,23 +54,22 @@ func New(
 	}
 }
 
-func (s *Service) Save(ctx context.Context, sub models.Subscription) (uuid.UUID, error) {
+func (s *Service) Save(ctx context.Context, sub models.Subscription) (uuid.UUID, time.Time, error) {
 	const op = "services.subscriptions.Create"
 	log := slogx.FromContext(ctx).With(slog.String("op", op))
 
-	id, err := s.subSaver.SaveSubscription(ctx, sub)
-
+	id, createAt, err := s.subSaver.SaveSubscription(ctx, sub)
 	if err != nil {
 		if errors.Is(err, storage.ErrSubscriptionExists) {
 			log.WarnContext(ctx, "subscription already exists", slogx.Err(err))
-			return uuid.Nil, ErrAlreadyExists
+			return uuid.Nil, time.Time{}, ErrAlreadyExists
 		}
 
 		log.ErrorContext(ctx, "error creating subscription", slogx.Err(err))
-		return uuid.Nil, fmt.Errorf("create subscription: %w", err)
+		return uuid.Nil, time.Time{}, fmt.Errorf("create subscription: %w", err)
 	}
 
-	return id, nil
+	return id, createAt, nil
 }
 
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
@@ -90,7 +90,7 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (s *Service) Update(ctx context.Context, id uuid.UUID, patch request.UpdateRequest) error {
+func (s *Service) Update(ctx context.Context, id uuid.UUID, patch request.UpdateRequest) (models.Subscription, error) {
 	const op = "services.subscriptions.Update"
 	log := slogx.FromContext(ctx).With(
 		slog.String("op", op),
@@ -101,25 +101,26 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, patch request.Update
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			log.WarnContext(ctx, "subscription not found", slogx.Err(err))
-			return ErrNotFound
+			return models.Subscription{}, ErrNotFound
 		}
 
 		log.ErrorContext(ctx, "failed to get subscription", slogx.Err(err))
-		return fmt.Errorf("%s: get: %w", op, err)
+		return models.Subscription{}, fmt.Errorf("%s: get: %w", op, err)
 	}
 
 	if err := patch.ApplyTo(&current); err != nil {
 		log.ErrorContext(ctx, "failed to apply patch", slogx.Err(err))
-		return fmt.Errorf("%s: apply: %w", op, err)
+		return models.Subscription{}, fmt.Errorf("%s: apply: %w", op, err)
 	}
 
-	if err := s.subUpdater.UpdateSubscription(ctx, current); err != nil {
+	updated, err := s.subUpdater.UpdateSubscription(ctx, current)
+	if err != nil {
 		log.ErrorContext(ctx, "failed to update subscription", slogx.Err(err))
-		return fmt.Errorf("%s: update: %w", op, err)
+		return models.Subscription{}, fmt.Errorf("%s: update: %w", op, err)
 	}
 
 	log.InfoContext(ctx, "subscription updated")
-	return nil
+	return updated, nil
 }
 
 func (s *Service) Get(ctx context.Context, id uuid.UUID) (models.Subscription, error) {

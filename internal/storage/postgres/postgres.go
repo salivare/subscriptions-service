@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -58,7 +59,7 @@ func New(cfg config.PostgresConfig) (*Storage, error) {
 	return &Storage{db: db}, nil
 }
 
-func (s *Storage) SaveSubscription(ctx context.Context, sub models.Subscription) (uuid.UUID, error) {
+func (s *Storage) SaveSubscription(ctx context.Context, sub models.Subscription) (uuid.UUID, time.Time, error) {
 	const op = "storage.postgres.SaveSubscription"
 	log := slogx.FromContext(ctx).With(slog.String("op", op))
 
@@ -70,10 +71,13 @@ func (s *Storage) SaveSubscription(ctx context.Context, sub models.Subscription)
             start_date,
             end_date
         ) VALUES ($1, $2, $3, $4, $5)
-        RETURNING id;
+        RETURNING id, created_at;
     `
 
-	var id uuid.UUID
+	var (
+		id        uuid.UUID
+		createdAt time.Time
+	)
 
 	err := s.db.QueryRowContext(
 		ctx,
@@ -83,25 +87,25 @@ func (s *Storage) SaveSubscription(ctx context.Context, sub models.Subscription)
 		sub.UserID,
 		sub.StartDate,
 		sub.EndDate,
-	).Scan(&id)
+	).Scan(&id, &createdAt)
 
 	if err != nil {
 		var pgErr *pgconn.PgError
 
 		if errors.As(err, &pgErr) && pgErr.Code == PGErrUniqueViolation {
 			log.WarnContext(ctx, "subscription already exists", slogx.Err(err))
-			return uuid.Nil, fmt.Errorf("%s: %w", op, storage.ErrSubscriptionExists)
+			return uuid.Nil, time.Time{}, fmt.Errorf("%s: %w", op, storage.ErrSubscriptionExists)
 		}
 
 		log.ErrorContext(ctx, "failed to save subscription", slogx.Err(err))
-		return uuid.Nil, fmt.Errorf("%s: %w", op, err)
+		return uuid.Nil, time.Time{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return id, nil
+	return id, createdAt, nil
 }
 
 func (s *Storage) SubscriptionByID(ctx context.Context, id uuid.UUID) (models.Subscription, error) {
-	const op = "storage.postgres.SubscriptionByID"
+	const op = "storage.postgres.GetSubscription"
 	log := slogx.FromContext(ctx).With(slog.String("op", op))
 
 	query := `
@@ -153,21 +157,25 @@ func (s *Storage) DeleteSubscription(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (s *Storage) UpdateSubscription(ctx context.Context, sub models.Subscription) error {
+func (s *Storage) UpdateSubscription(ctx context.Context, sub models.Subscription) (models.Subscription, error) {
 	const op = "storage.postgres.UpdateSubscription"
 	log := slogx.FromContext(ctx).With(slog.String("op", op))
 
 	query := `
         UPDATE subscriptions
-        SET service_name = $1,
-            price = $2,
-            user_id = $3,
-            start_date = $4,
-            end_date = $5
+        SET
+            service_name = $1,
+            price        = $2,
+            user_id      = $3,
+            start_date   = $4,
+            end_date     = $5
         WHERE id = $6
+        RETURNING id, service_name, price, user_id, start_date, end_date, created_at, updated_at;
     `
 
-	res, err := s.db.ExecContext(
+	var updated models.Subscription
+
+	err := s.db.QueryRowContext(
 		ctx,
 		query,
 		sub.ServiceName,
@@ -176,22 +184,30 @@ func (s *Storage) UpdateSubscription(ctx context.Context, sub models.Subscriptio
 		sub.StartDate,
 		sub.EndDate,
 		sub.ID,
+	).Scan(
+		&updated.ID,
+		&updated.ServiceName,
+		&updated.Price,
+		&updated.UserID,
+		&updated.StartDate,
+		&updated.EndDate,
+		&updated.CreatedAt,
+		&updated.UpdatedAt,
 	)
 	if err != nil {
 		var pgErr *pgconn.PgError
 
 		if errors.As(err, &pgErr) && pgErr.Code == PGErrUniqueViolation {
-			return fmt.Errorf("%s: %w", op, storage.ErrSubscriptionExists)
+			return models.Subscription{}, fmt.Errorf("%s: %w", op, storage.ErrSubscriptionExists)
+		}
+
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.Subscription{}, storage.ErrNotFound
 		}
 
 		log.ErrorContext(ctx, "failed to update subscription", slogx.Err(err))
-		return fmt.Errorf("%s: %w", op, err)
+		return models.Subscription{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	rows, _ := res.RowsAffected()
-	if rows == 0 {
-		return storage.ErrNotFound
-	}
-
-	return nil
+	return updated, nil
 }

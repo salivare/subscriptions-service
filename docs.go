@@ -43,7 +43,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/savev1.Response"
+                            "$ref": "#/definitions/savev1.CreateResponse"
                         }
                     },
                     "400": {
@@ -196,9 +196,21 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Updated subscription",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.Subscription"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -224,6 +236,35 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "models.Subscription": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "integer"
+                },
+                "service_name": {
+                    "type": "string"
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "request.CreateRequest": {
             "type": "object",
             "required": [
@@ -275,6 +316,17 @@ const docTemplate = `{
                 "data": {},
                 "error": {},
                 "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "savev1.CreateResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
                     "type": "string"
                 }
             }

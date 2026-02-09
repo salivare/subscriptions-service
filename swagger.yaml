@@ -1,4 +1,23 @@
 definitions:
+  models.Subscription:
+    properties:
+      created_at:
+        type: string
+      end_date:
+        type: string
+      id:
+        type: string
+      price:
+        type: integer
+      service_name:
+        type: string
+      start_date:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
   request.CreateRequest:
     properties:
       end_date:
@@ -37,6 +56,13 @@ definitions:
       status:
         type: string
     type: object
+  savev1.CreateResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+    type: object
   savev1.Response:
     properties:
       data: {}
@@ -67,7 +93,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/savev1.Response'
+            $ref: '#/definitions/savev1.CreateResponse'
         "400":
           description: Invalid request
           schema:
@@ -169,9 +195,14 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Updated subscription
           schema:
-            $ref: '#/definitions/response.Response'
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Subscription'
+              type: object
         "400":
           description: Invalid input
           schema:
