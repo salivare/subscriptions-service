@@ -16,15 +16,15 @@ swagger_server:
   ui_path: "/app/swaggerui" # путь внутри контейнера
 
 postgres:
-  host: "postgres"          # важно: имя сервиса в docker-compose
+  host: "localhost"
   port: 5432
   user: "postgres"
   password: "secret"
-  dbname: "subscriptions"
+  dbname: "subscriptions_test"
   sslmode: "disable"
 
   migrations_path: "/app/migrations"   # путь внутри контейнера
-  migrations_table: "schema_migrations"
+  migrations_table: "test_migrations"
 
   retry:
     attempts: 10

@@ -1,0 +1,45 @@
+version: "3"
+
+vars:
+  CONFIG_HOST: "./configs/test.yaml"
+  CONFIG_CONTAINER: "/config/config.yaml"
+
+tasks:
+  build-migrator:
+    desc: "Собрать образ мигратора"
+    cmds:
+      - docker build -f Docker/migrator/Dockerfile -t subscriptions-migrator .
+
+  run-migrator:
+    desc: "Запустить миграции в test_migrator"
+    deps: [build-migrator]
+    cmds:
+      - >
+        docker run --rm
+        --name test_migrator
+        -e CONFIG_PATH={{.CONFIG_CONTAINER}}
+        -v {{.CONFIG_HOST}}:{{.CONFIG_CONTAINER}}:ro
+        -v $(pwd)/migrations:/app/migrations:ro
+        subscriptions-migrator
+
+  migrate:
+    desc: "Полный цикл: build + run"
+    cmds:
+      - task: run-migrator
+
+  run-tests:
+    desc: "Запуск всех автотестов из tests/"
+    cmds:
+      - >
+        docker run --rm
+        --name test_runner
+        -e CONFIG_PATH={{.CONFIG_CONTAINER}}
+        -v $(pwd):/app
+        -v {{.CONFIG_HOST}}:{{.CONFIG_CONTAINER}}:ro
+        -w /app
+        golang:1.25.7-alpine3.22
+        sh -c "
+          apk add --no-cache git &&
+          go mod download &&
+          go test ./tests/... -v
+        "

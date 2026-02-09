@@ -1,8 +1,11 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
+
+	_ "github.com/lib/pq"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -12,22 +15,59 @@ import (
 	"github.com/salivare/subscriptions-service/internal/storage"
 )
 
+func ensureDatabase(adminDSN, dbName string) error {
+	db, err := sql.Open("postgres", adminDSN)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	var exists bool
+	err = db.QueryRow(
+		"SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)",
+		dbName,
+	).Scan(&exists)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		_, err = db.Exec("CREATE DATABASE " + dbName)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	cfg := config.MustLoad()
 	pg := cfg.Postgres
 
-	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s?sslmode=%s&x-migrations-table=%s",
+	baseDSN := fmt.Sprintf(
+		"postgres://%s:%s@%s:%d",
 		pg.User,
 		pg.Password,
 		pg.Host,
 		pg.Port,
+	)
+
+	adminDSN := baseDSN + "/postgres?sslmode=" + pg.SSLMode
+
+	if err := ensureDatabase(adminDSN, pg.DBName); err != nil {
+		panic(fmt.Errorf("failed to ensure database: %w", err))
+	}
+
+	finalDSN := fmt.Sprintf(
+		"%s/%s?sslmode=%s&x-migrations-table=%s",
+		baseDSN,
 		pg.DBName,
 		pg.SSLMode,
 		pg.MigrationsTable,
 	)
 
-	m, err := migrate.New("file://"+pg.MigrationsPath, dsn)
+	m, err := migrate.New("file://"+pg.MigrationsPath, finalDSN)
 	if err != nil {
 		panic(err)
 	}

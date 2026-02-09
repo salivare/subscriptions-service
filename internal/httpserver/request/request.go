@@ -18,10 +18,11 @@ type CreateRequest struct {
 }
 
 type UpdateRequest struct {
-	ServiceName *string `json:"service_name"`
-	Price       *int64  `json:"price" validate:"min=0"`
-	StartDate   *string `json:"start_date"`
-	EndDate     *string `json:"end_date"`
+	ServiceName *string `json:"service_name" validate:"omitempty,min=1"`
+	Price       *int64  `json:"price" validate:"omitempty,min=1"`
+	UserID      *string `json:"user_id" validate:"omitempty,uuid4"`
+	StartDate   *string `json:"start_date" validate:"omitempty,datetime=01-2006"`
+	EndDate     *string `json:"end_date" validate:"omitempty,datetime=02-2006"`
 }
 
 type SumRequest struct {
