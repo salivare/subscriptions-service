@@ -1,0 +1,33 @@
+env: "local"
+
+http_server:
+  host: "0.0.0.0"
+  port: 8082
+  timeout: 4s
+  idle_timeout: 30s
+  shutdown_timeout: 5s
+  read_timeout: 5s
+  write_timeout: 10s
+  read_header_timeout: 2s
+  max_header_bytes: 1048576
+
+swagger_server:
+  json_path: "/app/swagger.json"
+  ui_path: "/app/swaggerui"
+
+postgres:
+  host: "postgres"          # важно: имя сервиса в docker-compose
+  port: 5432
+  user: "postgres"
+  password: "secret"
+  dbname: "subscriptions"
+  sslmode: "disable"
+
+  migrations_path: "/app/migrations"   # путь внутри контейнера
+  migrations_table: "schema_migrations"
+
+  retry:
+    attempts: 10
+    initial_delay: 1s
+    max_delay: 10s
+    step: 2s

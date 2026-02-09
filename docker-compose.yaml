@@ -21,6 +21,36 @@ services:
       timeout: 3s
       retries: 10
       start_period: 5s
+  migrator:
+    build:
+      context: .
+      dockerfile: ./Docker/migrator/Dockerfile
+    container_name: subscriptions-migrator
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgres://subscriptions:subscriptions@postgres:5432/subscriptions?sslmode=disable
+      CONFIG_PATH: /config/config.yaml
+    command: ["/app/migrator"]
+    restart: "no"
+    volumes:
+      - ./configs/docker.yaml:/config/config.yaml:ro
 
+  app:
+    build:
+      context: .
+      dockerfile: ./Docker/app/Dockerfile
+    container_name: subscriptions-service
+    depends_on:
+      - migrator
+    environment:
+      DATABASE_URL: postgres://subscriptions:subscriptions@postgres:5432/subscriptions?sslmode=disable
+      CONFIG_PATH: /config/config.yaml
+      PORT: "8080"
+    ports:
+      - "8082:8082"
+    restart: always
+    volumes:
+      - ./configs/docker.yaml:/config/config.yaml:ro
 volumes:
   postgres_data:
