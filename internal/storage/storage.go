@@ -10,6 +10,7 @@ import (
 
 var (
 	ErrSubscriptionExists = errors.New("subscription already exists")
+	ErrNotFound           = errors.New("subscription not found")
 )
 
 func RetryBackoff(cfg config.RetryConfig, fn func() error) error {

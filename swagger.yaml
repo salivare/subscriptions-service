@@ -1,5 +1,5 @@
 definitions:
-  request.Request:
+  request.CreateRequest:
     properties:
       end_date:
         type: string
@@ -18,8 +18,28 @@ definitions:
     - start_date
     - user_id
     type: object
+  request.UpdateRequest:
+    properties:
+      end_date:
+        type: string
+      price:
+        minimum: 0
+        type: integer
+      service_name:
+        type: string
+      start_date:
+        type: string
+    type: object
+  response.Response:
+    properties:
+      data: {}
+      error: {}
+      status:
+        type: string
+    type: object
   savev1.Response:
     properties:
+      data: {}
       error: {}
       id:
         type: string
@@ -40,7 +60,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/request.Request'
+          $ref: '#/definitions/request.CreateRequest'
       produces:
       - application/json
       responses:
@@ -49,10 +69,122 @@ paths:
           schema:
             $ref: '#/definitions/savev1.Response'
         "400":
-          description: Bad Request
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/savev1.Response'
+        "409":
+          description: Subscription already exists
+          schema:
+            $ref: '#/definitions/savev1.Response'
+        "500":
+          description: Internal server error
           schema:
             $ref: '#/definitions/savev1.Response'
       summary: Create subscription
+      tags:
+      - subscriptions
+  /api/v1/subscription/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a subscription by ID
+      parameters:
+      - description: Subscription ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Delete subscription
+      tags:
+      - subscriptions
+    get:
+      consumes:
+      - application/json
+      description: Get subscription by ID
+      parameters:
+      - description: Subscription ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Subscription data
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get subscription
+      tags:
+      - subscriptions
+    patch:
+      consumes:
+      - application/json
+      description: Partially update subscription fields (PATCH). Any field may be
+        omitted.
+      parameters:
+      - description: Subscription ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.UpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Update subscription
       tags:
       - subscriptions
 swagger: "2.0"

@@ -99,3 +99,99 @@ func (s *Storage) SaveSubscription(ctx context.Context, sub models.Subscription)
 
 	return id, nil
 }
+
+func (s *Storage) SubscriptionByID(ctx context.Context, id uuid.UUID) (models.Subscription, error) {
+	const op = "storage.postgres.SubscriptionByID"
+	log := slogx.FromContext(ctx).With(slog.String("op", op))
+
+	query := `
+        SELECT id, service_name, price, user_id, start_date, end_date
+        FROM subscriptions
+        WHERE id = $1
+    `
+
+	var sub models.Subscription
+
+	err := s.db.QueryRowContext(ctx, query, id).Scan(
+		&sub.ID,
+		&sub.ServiceName,
+		&sub.Price,
+		&sub.UserID,
+		&sub.StartDate,
+		&sub.EndDate,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.Subscription{}, storage.ErrNotFound
+		}
+
+		log.ErrorContext(ctx, "failed to get subscription", slogx.Err(err))
+		return models.Subscription{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return sub, nil
+}
+
+func (s *Storage) DeleteSubscription(ctx context.Context, id uuid.UUID) error {
+	const op = "storage.postgres.DeleteSubscription"
+	log := slogx.FromContext(ctx).With(slog.String("op", op))
+
+	query := `DELETE FROM subscriptions WHERE id = $1`
+
+	res, err := s.db.ExecContext(ctx, query, id)
+	if err != nil {
+		log.ErrorContext(ctx, "failed to delete subscription", slogx.Err(err))
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return storage.ErrNotFound
+	}
+
+	return nil
+}
+
+func (s *Storage) UpdateSubscription(ctx context.Context, sub models.Subscription) error {
+	const op = "storage.postgres.UpdateSubscription"
+	log := slogx.FromContext(ctx).With(slog.String("op", op))
+
+	query := `
+        UPDATE subscriptions
+        SET service_name = $1,
+            price = $2,
+            user_id = $3,
+            start_date = $4,
+            end_date = $5
+        WHERE id = $6
+    `
+
+	res, err := s.db.ExecContext(
+		ctx,
+		query,
+		sub.ServiceName,
+		sub.Price,
+		sub.UserID,
+		sub.StartDate,
+		sub.EndDate,
+		sub.ID,
+	)
+	if err != nil {
+		var pgErr *pgconn.PgError
+
+		if errors.As(err, &pgErr) && pgErr.Code == PGErrUniqueViolation {
+			return fmt.Errorf("%s: %w", op, storage.ErrSubscriptionExists)
+		}
+
+		log.ErrorContext(ctx, "failed to update subscription", slogx.Err(err))
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return storage.ErrNotFound
+	}
+
+	return nil
+}

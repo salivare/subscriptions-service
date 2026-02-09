@@ -1,15 +1,20 @@
 package response
 
-import "net/http"
+import (
+	"net/http"
+)
 
 const (
 	StatusOK    = "OK"
 	StatusError = "Error"
 )
 
+const ErrNotFound = "subscription not found"
+
 type Response struct {
 	Status string      `json:"status"`
 	Error  interface{} `json:"error,omitempty"`
+	Data   interface{} `json:"data,omitempty"`
 	Code   int         `json:"-"`
 }
 
@@ -24,6 +29,14 @@ func (r Response) StatusCode() int {
 func OK() Response {
 	return Response{
 		Status: StatusOK,
+		Code:   http.StatusOK,
+	}
+}
+
+func OKWithData(data any) Response {
+	return Response{
+		Status: StatusOK,
+		Data:   data,
 		Code:   http.StatusOK,
 	}
 }

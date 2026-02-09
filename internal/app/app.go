@@ -5,9 +5,13 @@ import (
 	httpapp "github.com/salivare/subscriptions-service/internal/app/http"
 	swaggerapp "github.com/salivare/subscriptions-service/internal/app/swagger"
 	"github.com/salivare/subscriptions-service/internal/config"
+	deletev1 "github.com/salivare/subscriptions-service/internal/httpserver/handlers/subscriptions/v1/delete"
+	getv1 "github.com/salivare/subscriptions-service/internal/httpserver/handlers/subscriptions/v1/get"
 	"github.com/salivare/subscriptions-service/internal/httpserver/handlers/subscriptions/v1/save"
+	updatev1 "github.com/salivare/subscriptions-service/internal/httpserver/handlers/subscriptions/v1/update"
 	"github.com/salivare/subscriptions-service/internal/httpserver/middleware"
 	"github.com/salivare/subscriptions-service/internal/httpserver/router"
+	"github.com/salivare/subscriptions-service/internal/services/subscription"
 	"github.com/salivare/subscriptions-service/internal/storage/postgres"
 )
 
@@ -29,7 +33,12 @@ func New(log *slogx.Logger, cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	r.POST("/api/v1/subscription", savev1.New(storage))
+	subSrv := subscription.New(storage, storage, storage, storage)
+
+	r.POST("/api/v1/subscription", savev1.New(subSrv))
+	r.DELETE("/api/v1/subscription/{id}", deletev1.New(subSrv))
+	r.PATCH("/api/v1/subscription/{id}", updatev1.New(subSrv))
+	r.GET("/api/v1/subscription/{id}", getv1.New(subSrv))
 
 	sw := swaggerapp.New(
 		cfg.SwaggerServer.JSONPath,

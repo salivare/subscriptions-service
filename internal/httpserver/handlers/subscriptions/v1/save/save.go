@@ -13,7 +13,7 @@ import (
 	"github.com/salivare/subscriptions-service/internal/httpserver/render"
 	"github.com/salivare/subscriptions-service/internal/httpserver/request"
 	"github.com/salivare/subscriptions-service/internal/httpserver/response"
-	"github.com/salivare/subscriptions-service/internal/storage"
+	subSrv "github.com/salivare/subscriptions-service/internal/services/subscription"
 )
 
 type Response struct {
@@ -25,28 +25,30 @@ func (r Response) StatusCode() int {
 	return r.Response.StatusCode()
 }
 
-type SubscriptionSaver interface {
-	SaveSubscription(ctx context.Context, subscription models.Subscription) (uuid.UUID, error)
+type Subscription interface {
+	Save(ctx context.Context, subscription models.Subscription) (uuid.UUID, error)
 }
 
 // New creates a handler for creating a subscription.
 //
-// @Summary Create subscription
-// @Description Creates a new subscription for a user
-// @Tags subscriptions
-// @Accept json
-// @Produce json
-// @Param request body request.Request true "Subscription data"
-// @Success 200 {object} Response
-// @Failure 400 {object} Response
-// @Router /api/v1/subscription [post]
-func New(subscriptionSaver SubscriptionSaver) http.HandlerFunc {
+// @Summary      Create subscription
+// @Description  Creates a new subscription for a user
+// @Tags         subscriptions
+// @Accept       json
+// @Produce      json
+// @Param        request  body      request.CreateRequest  true  "Subscription data"
+// @Success      200      {object}  Response
+// @Failure      400      {object}  Response  "Invalid request"
+// @Failure      409      {object}  Response  "Subscription already exists"
+// @Failure      500      {object}  Response  "Internal server error"
+// @Router       /api/v1/subscription [post]
+func New(subscription Subscription) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.subscriptions.save.New"
 		ctx := r.Context()
 		log := slogx.FromContext(ctx).With(slog.String("op", op))
 
-		var req request.Request
+		var req request.CreateRequest
 		if err := render.Bind(r, &req); err != nil {
 			log.ErrorContext(ctx, "invalid json", slogx.Err(err))
 			render.JSON(
@@ -62,7 +64,7 @@ func New(subscriptionSaver SubscriptionSaver) http.HandlerFunc {
 			errors.As(err, &validateError)
 
 			log.ErrorContext(ctx, "invalid request", slogx.Err(err))
-			render.JSON(w, r, response.ValidationError(validateError))
+			render.JSON(w, r, request.ValidationError(validateError))
 			return
 		}
 
@@ -77,13 +79,12 @@ func New(subscriptionSaver SubscriptionSaver) http.HandlerFunc {
 			return
 		}
 
-		id, err := subscriptionSaver.SaveSubscription(ctx, sub)
+		id, err := subscription.Save(ctx, sub)
 		if err != nil {
-			if errors.Is(err, storage.ErrSubscriptionExists) {
-				log.WarnContext(ctx, "subscription already exists", slogx.Err(err))
+			if errors.Is(err, subSrv.ErrAlreadyExists) {
 				render.JSON(
 					w, r, Response{
-						Response: response.Conflict("subscription already exists"),
+						Response: response.Conflict(err.Error()),
 					},
 				)
 				return
