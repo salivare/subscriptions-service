@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/salivare-io/slogx"
 	"github.com/salivare/subscriptions-service/internal/domain/models"
@@ -17,6 +16,7 @@ import (
 	subSrv "github.com/salivare/subscriptions-service/internal/services/subscription"
 )
 
+// Subscription service interface
 type Subscription interface {
 	Update(ctx context.Context, id uuid.UUID, updateReq request.UpdateRequest) (models.Subscription, error)
 }
@@ -53,12 +53,7 @@ func New(subscription Subscription) http.HandlerFunc {
 			return
 		}
 
-		if err := validator.New().Struct(reqBody); err != nil {
-			var validateErr validator.ValidationErrors
-			errors.As(err, &validateErr)
-
-			log.ErrorContext(ctx, "invalid request", slogx.Err(err))
-			render.JSON(w, r, request.ValidationError(validateErr))
+		if !request.ValidateStruct(w, r, &reqBody) {
 			return
 		}
 

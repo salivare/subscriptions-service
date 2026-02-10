@@ -9,6 +9,7 @@ type App struct {
 	uiPath   string
 }
 
+// New creates a new instance of the Swagger application.
 func New(jsonPath, uiPath string) *App {
 	return &App{
 		jsonPath: jsonPath,
@@ -16,6 +17,7 @@ func New(jsonPath, uiPath string) *App {
 	}
 }
 
+// Register rigging swagger data
 func (a *App) Register(mux *http.ServeMux) {
 	// swagger.json
 	mux.HandleFunc(

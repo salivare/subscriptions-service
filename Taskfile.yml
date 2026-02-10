@@ -5,6 +5,12 @@ vars:
   CONFIG_CONTAINER: "/config/config.yaml"
 
 tasks:
+  run-compose:
+    desc: "Запуск docker compose"
+    cmds:
+      - docker compose down --remove-orphans
+      - docker compose up --build --force-recreate
+
   build-migrator:
     desc: "Собрать образ мигратора"
     cmds:
@@ -23,7 +29,7 @@ tasks:
         subscriptions-migrator
 
   migrate:
-    desc: "Полный цикл: build + run"
+    desc: "build + run"
     cmds:
       - task: run-migrator
 

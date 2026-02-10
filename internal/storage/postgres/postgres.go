@@ -27,6 +27,7 @@ type Storage struct {
 	db *sql.DB
 }
 
+// New Storage constructor.
 func New(cfg config.PostgresConfig) (*Storage, error) {
 	const op = "storage.postgres.New"
 
@@ -60,6 +61,7 @@ func New(cfg config.PostgresConfig) (*Storage, error) {
 	return &Storage{db: db}, nil
 }
 
+// SaveSubscription implementation of the Saver interface.
 func (s *Storage) SaveSubscription(ctx context.Context, sub models.Subscription) (uuid.UUID, time.Time, error) {
 	const op = "storage.postgres.SaveSubscription"
 	log := slogx.FromContext(ctx).With(slog.String("op", op))
@@ -105,6 +107,7 @@ func (s *Storage) SaveSubscription(ctx context.Context, sub models.Subscription)
 	return id, createdAt, nil
 }
 
+// SubscriptionByID implementation of the Getter interface.
 func (s *Storage) SubscriptionByID(ctx context.Context, id uuid.UUID) (models.Subscription, error) {
 	const op = "storage.postgres.GetSubscription"
 	log := slogx.FromContext(ctx).With(slog.String("op", op))
@@ -138,6 +141,7 @@ func (s *Storage) SubscriptionByID(ctx context.Context, id uuid.UUID) (models.Su
 	return sub, nil
 }
 
+// DeleteSubscription implementation of the Deleter interface.
 func (s *Storage) DeleteSubscription(ctx context.Context, id uuid.UUID) error {
 	const op = "storage.postgres.DeleteSubscription"
 	log := slogx.FromContext(ctx).With(slog.String("op", op))
@@ -159,6 +163,7 @@ func (s *Storage) DeleteSubscription(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+// UpdateSubscription implementation of the Updater interface.
 func (s *Storage) UpdateSubscription(ctx context.Context, sub models.Subscription) (models.Subscription, error) {
 	const op = "storage.postgres.UpdateSubscription"
 	log := slogx.FromContext(ctx).With(slog.String("op", op))
@@ -216,6 +221,7 @@ func (s *Storage) UpdateSubscription(ctx context.Context, sub models.Subscriptio
 	return updated, nil
 }
 
+// SumSubscriptions implementation of the Summer interface.
 func (s *Storage) SumSubscriptions(ctx context.Context, f models.SumFilter) (int64, error) {
 	const op = "storage.postgres.SumSubscriptions"
 	log := slogx.FromContext(ctx).With(slog.String("op", op))

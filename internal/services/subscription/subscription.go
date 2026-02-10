@@ -14,25 +14,34 @@ import (
 	"github.com/salivare/subscriptions-service/internal/storage"
 )
 
-var ErrAlreadyExists = errors.New("subscription already exists")
-var ErrNotFound = errors.New("subscription not found")
+var (
+	ErrAlreadyExists     = errors.New("subscription already exists")
+	ErrNotFound          = errors.New("subscription not found")
+	ErrStartDateInFuture = errors.New("start_date_from cannot be in the future when start_date_to is omitted")
+	ErrEndDateInFuture   = errors.New("end_date_from cannot be in the future when end_date_to is omitted")
+)
 
+// Saver Save Signature interface
 type Saver interface {
 	SaveSubscription(ctx context.Context, subscription models.Subscription) (uuid.UUID, time.Time, error)
 }
 
+// Updater Update Signature interface
 type Updater interface {
 	UpdateSubscription(ctx context.Context, subscription models.Subscription) (models.Subscription, error)
 }
 
+// Deleter Delete Signature interface
 type Deleter interface {
 	DeleteSubscription(ctx context.Context, id uuid.UUID) error
 }
 
+// Getter Get Signature interface
 type Getter interface {
 	SubscriptionByID(ctx context.Context, id uuid.UUID) (models.Subscription, error)
 }
 
+// Summer Sum Signature interface
 type Summer interface {
 	SumSubscriptions(ctx context.Context, filter models.SumFilter) (int64, error)
 }
@@ -45,6 +54,7 @@ type Service struct {
 	subSummer  Summer
 }
 
+// New Service constructor.
 func New(
 	subSaver Saver,
 	subUpdater Updater,
@@ -61,6 +71,7 @@ func New(
 	}
 }
 
+// Save implementation of the Subscription interface.
 func (s *Service) Save(ctx context.Context, sub models.Subscription) (uuid.UUID, time.Time, error) {
 	const op = "services.subscriptions.Create"
 	log := slogx.FromContext(ctx).With(slog.String("op", op))
@@ -79,6 +90,7 @@ func (s *Service) Save(ctx context.Context, sub models.Subscription) (uuid.UUID,
 	return id, createAt, nil
 }
 
+// Delete implementation of the Subscription interface.
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 	const op = "services.subscriptions.Delete"
 	log := slogx.FromContext(ctx).With(slog.String("op", op), slog.String("id", id.String()))
@@ -97,6 +109,7 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+// Update implementation of the Subscription interface.
 func (s *Service) Update(ctx context.Context, id uuid.UUID, patch request.UpdateRequest) (models.Subscription, error) {
 	const op = "services.subscriptions.Update"
 	log := slogx.FromContext(ctx).With(
@@ -130,6 +143,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, patch request.Update
 	return updated, nil
 }
 
+// Get implementation of the Subscription interface.
 func (s *Service) Get(ctx context.Context, id uuid.UUID) (models.Subscription, error) {
 	const op = "services.subscriptions.Get"
 	log := slogx.FromContext(ctx).With(
@@ -151,39 +165,57 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (models.Subscription, e
 	return sub, nil
 }
 
+// Sum implementation of the Subscription interface.
 func (s *Service) Sum(ctx context.Context, f models.SumFilter) (int64, error) {
 	const op = "services.subscriptions.Get"
 	log := slogx.FromContext(ctx).With(
 		slog.String("op", op),
 	)
 
-	if f.StartDateFrom == nil && f.EndDateFrom == nil {
-		log.ErrorContext(ctx, "must specify either StartDateFrom or EndDateFrom")
-		return 0, fmt.Errorf("at least one period must be provided: start_date_from or end_date_from")
-	}
-
 	now := time.Now().UTC()
 	currentMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 
 	if f.StartDateFrom != nil && f.StartDateTo == nil {
+		if f.StartDateFrom.After(currentMonth) {
+			return 0, ErrStartDateInFuture
+		}
+		log.InfoContext(ctx, "auto-setting start_date_to to current month")
 		f.StartDateTo = &currentMonth
 	}
 
 	if f.EndDateFrom != nil && f.EndDateTo == nil {
+		if f.EndDateFrom.After(currentMonth) {
+			return 0, ErrEndDateInFuture
+		}
+		log.InfoContext(ctx, "auto-setting end_date_to to current month")
 		f.EndDateTo = &currentMonth
 	}
 
 	if f.StartDateFrom != nil && f.StartDateTo != nil {
 		if f.StartDateTo.Before(*f.StartDateFrom) {
+			log.WarnContext(
+				ctx,
+				"invalid start_date range",
+				slog.Time("from", *f.StartDateFrom),
+				slog.Time("to", *f.StartDateTo),
+			)
 			return 0, fmt.Errorf("start_date_to must be >= start_date_from")
 		}
 	}
 
 	if f.EndDateFrom != nil && f.EndDateTo != nil {
 		if f.EndDateTo.Before(*f.EndDateFrom) {
+			log.WarnContext(
+				ctx,
+				"invalid end_date range",
+				slog.Time("from", *f.EndDateFrom),
+				slog.Time("to", *f.EndDateTo),
+			)
 			return 0, fmt.Errorf("end_date_to must be >= end_date_from")
 		}
 	}
+
+	log.InfoContext(ctx, "calculating subscription sum")
 
 	return s.subSummer.SumSubscriptions(ctx, f)
 }

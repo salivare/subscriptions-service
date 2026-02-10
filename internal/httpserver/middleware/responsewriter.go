@@ -1,11 +1,20 @@
 package middleware
 
-import "net/http"
+import (
+	"net/http"
+)
 
 type ResponseWriter struct {
 	http.ResponseWriter
 	Status int
 	Bytes  int
+}
+
+func NewResponseWriter(w http.ResponseWriter) *ResponseWriter {
+	return &ResponseWriter{
+		ResponseWriter: w,
+		Status:         http.StatusOK,
+	}
 }
 
 func (w *ResponseWriter) WriteHeader(status int) {
@@ -14,20 +23,15 @@ func (w *ResponseWriter) WriteHeader(status int) {
 }
 
 func (w *ResponseWriter) Write(b []byte) (int, error) {
-	if w.Status == 0 {
-		w.Status = http.StatusOK
-	}
 	n, err := w.ResponseWriter.Write(b)
 	w.Bytes += n
 	return n, err
 }
 
-// StatusCode returns the HTTP status code written by the handler.
 func (w *ResponseWriter) StatusCode() int {
 	return w.Status
 }
 
-// BytesWritten returns the number of bytes written to the response.
 func (w *ResponseWriter) BytesWritten() int {
 	return w.Bytes
 }

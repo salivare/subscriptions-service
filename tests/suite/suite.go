@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -21,7 +22,12 @@ func New(t *testing.T) (context.Context, *Suite) {
 	t.Helper()
 	t.Parallel()
 
-	cfg := config.MustLoadByPath("../configs/testlocal.yaml")
+	path := os.Getenv("CONFIG_PATH")
+	if path == "" {
+		path = "./configs/testlocal.yaml"
+	}
+
+	cfg := config.MustLoadByPath(path)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	t.Cleanup(cancel)

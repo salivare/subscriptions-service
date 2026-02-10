@@ -11,6 +11,7 @@ type ctxKey string
 
 const requestIDKey ctxKey = "request_id"
 
+// RequestID receives request_id.
 func RequestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {

@@ -19,7 +19,6 @@ import (
 
 type Response struct {
 	response.Response
-	ID *uuid.UUID `json:"id,omitempty"`
 }
 
 type CreateResponse struct {
@@ -31,6 +30,7 @@ func (r Response) StatusCode() int {
 	return r.Response.StatusCode()
 }
 
+// Subscription service interface
 type Subscription interface {
 	Save(ctx context.Context, subscription models.Subscription) (uuid.UUID, time.Time, error)
 }
