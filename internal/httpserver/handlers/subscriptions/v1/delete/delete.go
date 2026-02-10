@@ -14,6 +14,7 @@ import (
 	subSrv "github.com/salivare/subscriptions-service/internal/services/subscription"
 )
 
+// Subscription service interface
 type Subscription interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 }

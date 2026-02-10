@@ -8,8 +8,10 @@ import (
 	"github.com/salivare-io/slogx"
 )
 
+// LogFieldRequestID constant to add request_id field.
 const LogFieldRequestID = "request_id"
 
+// LoggerContext contextualizes the log and request_id to attach to all logs.
 func LoggerContext(base *slogx.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(
@@ -27,6 +29,7 @@ func LoggerContext(base *slogx.Logger) func(http.Handler) http.Handler {
 	}
 }
 
+// Logger adds a logic to all queries and fills with fields.
 func Logger(log *slogx.Logger) func(next http.Handler) http.Handler {
 	log = log.With(
 		slog.String("component", "http"),
@@ -43,15 +46,16 @@ func Logger(log *slogx.Logger) func(next http.Handler) http.Handler {
 					slog.String(LogFieldRequestID, GetRequestID(r.Context())),
 				)
 
-				ww := &ResponseWriter{ResponseWriter: w}
+				ww := NewResponseWriter(w)
 
 				t1 := time.Now()
+
 				defer func() {
 					entry.Info(
 						"request completed",
 						slog.Int("status", ww.StatusCode()),
 						slog.Int("bytes", ww.BytesWritten()),
-						slog.String("duration", time.Since(t1).String()),
+						slog.Duration("duration", time.Since(t1)),
 					)
 				}()
 

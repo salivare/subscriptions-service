@@ -26,14 +26,14 @@ type UpdateRequest struct {
 }
 
 type SumRequest struct {
-	UserID      *string `json:"user_id"`
-	ServiceName *string `json:"service_name"`
+	UserID      *string `json:"user_id" validate:"omitempty,uuid4"`
+	ServiceName *string `json:"service_name" validate:"omitempty,min=1"`
 
-	StartDateFrom *string `json:"start_date_from"`
-	StartDateTo   *string `json:"start_date_to"`
+	StartDateFrom *string `json:"start_date_from" validate:"omitempty,datetime=01-2006"`
+	StartDateTo   *string `json:"start_date_to" validate:"omitempty,datetime=01-2006"`
 
-	EndDateFrom *string `json:"end_date_from"`
-	EndDateTo   *string `json:"end_date_to"`
+	EndDateFrom *string `json:"end_date_from" validate:"omitempty,datetime=01-2006"`
+	EndDateTo   *string `json:"end_date_to" validate:"omitempty,datetime=01-2006"`
 }
 
 func (r CreateRequest) ToModel() (models.Subscription, error) {

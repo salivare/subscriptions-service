@@ -13,6 +13,7 @@ var (
 	ErrNotFound           = errors.New("subscription not found")
 )
 
+// RetryBackoff retry to run bd if there was a container race in the dock.
 func RetryBackoff(cfg config.RetryConfig, fn func() error) error {
 	delay := cfg.InitialDelay
 

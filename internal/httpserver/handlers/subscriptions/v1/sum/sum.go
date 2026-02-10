@@ -6,14 +6,15 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/salivare-io/slogx"
 	"github.com/salivare/subscriptions-service/internal/domain/models"
 	"github.com/salivare/subscriptions-service/internal/httpserver/render"
 	"github.com/salivare/subscriptions-service/internal/httpserver/request"
 	"github.com/salivare/subscriptions-service/internal/httpserver/response"
+	"github.com/salivare/subscriptions-service/internal/services/subscription"
 )
 
+// Subscription service interface
 type Subscription interface {
 	Sum(ctx context.Context, f models.SumFilter) (int64, error)
 }
@@ -30,7 +31,7 @@ type Subscription interface {
 //	@Failure		400		{object}	response.Response	"Invalid request"
 //	@Failure		500		{object}	response.Response	"Internal error"
 //	@Router			/api/v1/subscription/sum [post]
-func New(subscription Subscription) http.HandlerFunc {
+func New(s Subscription) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.subscriptions.sum.New"
 		ctx := r.Context()
@@ -43,12 +44,18 @@ func New(subscription Subscription) http.HandlerFunc {
 			return
 		}
 
-		if err := validator.New().Struct(reqBody); err != nil {
-			var validateErr validator.ValidationErrors
-			errors.As(err, &validateErr)
+		if !request.ValidateStruct(w, r, &reqBody) {
+			return
+		}
 
-			log.ErrorContext(ctx, "invalid request", slogx.Err(err))
-			render.JSON(w, r, request.ValidationError(validateErr))
+		if reqBody.StartDateFrom == nil && reqBody.EndDateFrom == nil {
+			render.JSON(
+				w, r, response.Response{
+					Status: response.StatusError,
+					Error:  "either start_date_from or end_date_from must be provided",
+					Code:   http.StatusBadRequest,
+				},
+			)
 			return
 		}
 
@@ -59,10 +66,18 @@ func New(subscription Subscription) http.HandlerFunc {
 			return
 		}
 
-		total, err := subscription.Sum(ctx, filter)
+		total, err := s.Sum(ctx, filter)
 		if err != nil {
-			log.ErrorContext(ctx, "failed to calculate sum", slogx.Err(err))
-			render.JSON(w, r, response.Internal("internal error"))
+			if errors.Is(err, subscription.ErrStartDateInFuture) ||
+				errors.Is(err, subscription.ErrEndDateInFuture) {
+
+				log.WarnContext(ctx, "invalid date range", slog.Any("error", err))
+				render.JSON(w, r, response.Error(err.Error()))
+				return
+			}
+
+			log.ErrorContext(ctx, "failed to calculate sum", slog.Any("error", err))
+			render.JSON(w, r, response.Error("internal error"))
 			return
 		}
 

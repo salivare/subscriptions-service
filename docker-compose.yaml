@@ -35,20 +35,20 @@ services:
     volumes:
       - ./configs/docker.yaml:/config/config.yaml:ro
 
-#  app:
-#    build:
-#      context: .
-#      dockerfile: ./Docker/app/Dockerfile
-#    container_name: sub-service
-#    depends_on:
-#      - migrator
-#    environment:
-#      CONFIG_PATH: /config/config.yaml
-#      PORT: "8080"
-#    ports:
-#      - "8082:8082"
-#    restart: always
-#    volumes:
-#      - ./configs/docker.yaml:/config/config.yaml:ro
+  app:
+    build:
+      context: .
+      dockerfile: ./Docker/app/Dockerfile
+    container_name: sub-service
+    depends_on:
+      - migrator
+    environment:
+      CONFIG_PATH: /config/config.yaml
+      PORT: "8080"
+    ports:
+      - "8082:8082"
+    restart: always
+    volumes:
+      - ./configs/docker.yaml:/config/config.yaml:ro
 volumes:
   postgres_data:
