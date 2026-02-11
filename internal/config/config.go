@@ -30,15 +30,20 @@ type HTTPConfig struct {
 }
 
 type PostgresConfig struct {
-	Host            string      `yaml:"host" env-default:"localhost"`
-	Port            int         `yaml:"port" env-default:"5432"`
-	User            string      `yaml:"user" env-default:"postgres"`
-	Password        string      `yaml:"password" env-default:""`
-	DBName          string      `yaml:"dbname" env-default:"postgres"`
-	SSLMode         string      `yaml:"sslmode" env-default:"disable"`
-	MigrationsPath  string      `yaml:"migrations_path" env-default:"./migrations"`
-	MigrationsTable string      `yaml:"migrations_table" env-default:"schema_migrations"`
-	Retry           RetryConfig `yaml:"retry"`
+	Host              string        `yaml:"host" env-default:"localhost"`
+	Port              int           `yaml:"port" env-default:"5432"`
+	User              string        `yaml:"user" env-default:"postgres"`
+	Password          string        `yaml:"password" env-default:""`
+	DBName            string        `yaml:"dbname" env-default:"postgres"`
+	SSLMode           string        `yaml:"sslmode" env-default:"disable"`
+	MaxConns          int           `yaml:"max_conns"`
+	MinConns          int           `yaml:"min_conns"`
+	MaxConnIdleTime   time.Duration `yaml:"max_conn_idle_time"`
+	MaxConnLifetime   time.Duration `yaml:"max_conn_lifetime"`
+	HealthCheckPeriod time.Duration `yaml:"health_check_period"`
+	MigrationsPath    string        `yaml:"migrations_path" env-default:"./migrations"`
+	MigrationsTable   string        `yaml:"migrations_table" env-default:"schema_migrations"`
+	Retry             RetryConfig   `yaml:"retry"`
 }
 
 type RetryConfig struct {
