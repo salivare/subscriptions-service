@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -10,8 +9,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/salivare-io/slogx"
 	"github.com/salivare/subscriptions-service/internal/domain/models"
 
@@ -24,7 +24,7 @@ const (
 )
 
 type Storage struct {
-	db *sql.DB
+	pool *pgxpool.Pool
 }
 
 // New Storage constructor.
@@ -41,16 +41,26 @@ func New(cfg config.PostgresConfig) (*Storage, error) {
 		cfg.SSLMode,
 	)
 
-	var db *sql.DB
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to parse DSN: %w", op, err)
+	}
 
-	err := storage.RetryBackoff(
+	config.MaxConns = int32(cfg.MaxConns)
+	config.MinConns = int32(cfg.MinConns)
+	config.MaxConnIdleTime = cfg.MaxConnIdleTime
+	config.MaxConnLifetime = cfg.MaxConnLifetime
+	config.HealthCheckPeriod = cfg.HealthCheckPeriod
+
+	var pool *pgxpool.Pool
+
+	err = storage.RetryBackoff(
 		cfg.Retry, func() error {
-			var err error
-			db, err = sql.Open("pgx", dsn)
+			pool, err = pgxpool.NewWithConfig(context.Background(), config)
 			if err != nil {
 				return err
 			}
-			return db.Ping()
+			return pool.Ping(context.Background())
 		},
 	)
 
@@ -58,7 +68,7 @@ func New(cfg config.PostgresConfig) (*Storage, error) {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return &Storage{db: db}, nil
+	return &Storage{pool: pool}, nil
 }
 
 // SaveSubscription implementation of the Saver interface.
@@ -82,7 +92,7 @@ func (s *Storage) SaveSubscription(ctx context.Context, sub models.Subscription)
 		createdAt time.Time
 	)
 
-	err := s.db.QueryRowContext(
+	err := s.pool.QueryRow(
 		ctx,
 		query,
 		sub.ServiceName,
@@ -120,7 +130,7 @@ func (s *Storage) SubscriptionByID(ctx context.Context, id uuid.UUID) (models.Su
 
 	var sub models.Subscription
 
-	err := s.db.QueryRowContext(ctx, query, id).Scan(
+	err := s.pool.QueryRow(ctx, query, id).Scan(
 		&sub.ID,
 		&sub.ServiceName,
 		&sub.Price,
@@ -130,7 +140,7 @@ func (s *Storage) SubscriptionByID(ctx context.Context, id uuid.UUID) (models.Su
 	)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return models.Subscription{}, storage.ErrNotFound
 		}
 
@@ -148,14 +158,13 @@ func (s *Storage) DeleteSubscription(ctx context.Context, id uuid.UUID) error {
 
 	query := `DELETE FROM subscriptions WHERE id = $1`
 
-	res, err := s.db.ExecContext(ctx, query, id)
+	cmd, err := s.pool.Exec(ctx, query, id)
 	if err != nil {
 		log.ErrorContext(ctx, "failed to delete subscription", slogx.Err(err))
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	rows, _ := res.RowsAffected()
-	if rows == 0 {
+	if cmd.RowsAffected() == 0 {
 		log.ErrorContext(ctx, "subscription not found", slogx.Err(err))
 		return storage.ErrNotFound
 	}
@@ -182,7 +191,7 @@ func (s *Storage) UpdateSubscription(ctx context.Context, sub models.Subscriptio
 
 	var updated models.Subscription
 
-	err := s.db.QueryRowContext(
+	err := s.pool.QueryRow(
 		ctx,
 		query,
 		sub.ServiceName,
@@ -201,6 +210,7 @@ func (s *Storage) UpdateSubscription(ctx context.Context, sub models.Subscriptio
 		&updated.CreatedAt,
 		&updated.UpdatedAt,
 	)
+
 	if err != nil {
 		var pgErr *pgconn.PgError
 
@@ -209,7 +219,7 @@ func (s *Storage) UpdateSubscription(ctx context.Context, sub models.Subscriptio
 			return models.Subscription{}, fmt.Errorf("%s: %w", op, storage.ErrSubscriptionExists)
 		}
 
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			log.WarnContext(ctx, "subscription does not exist", slogx.Err(err))
 			return models.Subscription{}, storage.ErrNotFound
 		}
@@ -272,7 +282,7 @@ func (s *Storage) SumSubscriptions(ctx context.Context, f models.SumFilter) (int
 	}
 
 	var total int64
-	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&total); err != nil {
+	if err := s.pool.QueryRow(ctx, query, args...).Scan(&total); err != nil {
 		log.ErrorContext(ctx, "failed to sum subscriptions", slogx.Err(err))
 		return 0, fmt.Errorf("failed to execute sum query: %w", err)
 	}
